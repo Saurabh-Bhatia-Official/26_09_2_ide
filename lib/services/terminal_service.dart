@@ -164,7 +164,7 @@ class TerminalService {
     // Zsh (macOS standard since Catalina)
     bool zshFound = true;
     String zshPath = '/bin/zsh';
-    if (!kIsWeb) {
+    if (!kIsWeb && Platform.isMacOS) {
       try {
         if (File('/bin/zsh').existsSync()) {
           zshPath = '/bin/zsh';
@@ -189,7 +189,7 @@ class TerminalService {
     // Bash
     bool bashFound = true;
     String bashPath = '/bin/bash';
-    if (!kIsWeb) {
+    if (!kIsWeb && Platform.isMacOS) {
       try {
         if (File('/bin/bash').existsSync()) {
           bashPath = '/bin/bash';

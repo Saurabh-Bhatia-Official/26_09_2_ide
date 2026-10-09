@@ -1,0 +1,427 @@
+name: Multi-Platform Build & Release
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish official GitHub Release (Manual only)'
+        required: true
+        type: boolean
+        default: false
+      version_tag:
+        description: 'Release Version Tag (e.g. v1.0.0)'
+        required: false
+        type: string
+        default: 'v1.0.0'
+      release_title:
+        description: 'Release Title'
+        required: false
+        type: string
+        default: 'Mingo IDE'
+      release_notes:
+        description: 'Changelog / Release Notes'
+        required: false
+        type: string
+        default: ''
+      only_publish_existing:
+        description: 'Publish from existing build artifacts (skips rebuilding)'
+        required: false
+        type: boolean
+        default: false
+      existing_run_id:
+        description: 'Run ID to release (if skipping rebuild, leave blank for latest main build)'
+        required: false
+        type: string
+        default: ''
+      is_draft:
+        description: 'Create as Draft Release'
+        required: true
+        type: boolean
+        default: false
+      is_prerelease:
+        description: 'Mark as Pre-release / Beta'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  # ===================================================================
+  # 1. WINDOWS BUILD (Inno Setup .exe Installer + Portable ZIP)
+  # ===================================================================
+  build-windows:
+    name: Build Windows (.exe & .zip)
+    if: ${{ github.event_name == 'push' || !inputs.only_publish_existing }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress
+
+      - name: Verify Environment
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Test Suite
+        run: flutter test
+
+      - name: Build Windows Application (Release)
+        run: flutter build windows --release
+
+      - name: Prepare Windows Installer Folder
+        run: New-Item -ItemType Directory -Force -Path build\windows\installer
+
+      - name: Compile Inno Setup Windows Installer (.exe)
+        run: |
+          if (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe") {
+            & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging/windows/inno_setup.iss
+          } else {
+            Write-Host "Inno Setup compiler not found, skipping .exe installer generation"
+          }
+
+      - name: Package Portable Windows Archive (.zip)
+        run: |
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath build\windows\installer\Mingo-IDE-Windows-Portable.zip -Force
+
+      - name: Upload Windows Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingo-ide-windows-build
+          path: build/windows/installer/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ===================================================================
+  # 2. LINUX BUILD (.deb Package + Portable .tar.gz)
+  # ===================================================================
+  build-linux:
+    name: Build Linux (.deb & .tar.gz)
+    if: ${{ github.event_name == 'push' || !inputs.only_publish_existing }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Environment
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Test Suite
+        run: flutter test
+
+      - name: Build Linux Application (Release)
+        run: flutter build linux --release
+
+      - name: Package Linux (.deb & .tar.gz)
+        run: |
+          chmod +x packaging/linux/build_deb.sh
+          bash packaging/linux/build_deb.sh "1.0.0" "build/linux/x64/release/bundle"
+
+      - name: Upload Linux Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingo-ide-linux-build
+          path: build/linux/installer/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ===================================================================
+  # 3. macOS BUILD (.dmg Disk Image & .zip Application)
+  # ===================================================================
+  build-macos:
+    name: Build macOS (.dmg & .zip)
+    if: ${{ github.event_name == 'push' || !inputs.only_publish_existing }}
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Environment
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Test Suite
+        run: flutter test
+
+      - name: Build macOS Application (Release)
+        run: flutter build macos --release
+
+      - name: Create macOS Installer (.dmg & .zip)
+        run: |
+          mkdir -p build/macos/installer
+          echo "=== Listing build output ==="
+          ls -la build/macos/Build/Products/Release/
+          hdiutil create -volname "Mingo IDE" -srcfolder "build/macos/Build/Products/Release/novaide.app" -ov -format UDZO "build/macos/installer/Mingo-IDE-macOS.dmg"
+          cd build/macos/Build/Products/Release
+          zip -r -y ../../../installer/Mingo-IDE-macOS.zip novaide.app
+
+      - name: Upload macOS Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingo-ide-macos-build
+          path: build/macos/installer/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ===================================================================
+  # 4. ANDROID BUILD (.apk Package)
+  # ===================================================================
+  build-android:
+    name: Build Android (.apk)
+    if: ${{ github.event_name == 'push' || !inputs.only_publish_existing }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Environment
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Test Suite
+        run: flutter test
+
+      - name: Build Android APK (Release)
+        run: flutter build apk --release
+
+      - name: Stage Android Artifact
+        run: |
+          mkdir -p build/android/installer
+          cp build/app/outputs/flutter-apk/app-release.apk build/android/installer/Mingo-IDE-Android.apk
+
+      - name: Upload Android Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingo-ide-android-build
+          path: build/android/installer/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ===================================================================
+  # 5. iOS BUILD (.ipa Package)
+  # ===================================================================
+  build-ios:
+    name: Build iOS (.ipa)
+    if: ${{ github.event_name == 'push' || !inputs.only_publish_existing }}
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Environment
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS Application (Release, Unsigned)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package iOS Payload (.ipa & .zip)
+        run: |
+          mkdir -p build/ios/installer/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/installer/Payload/
+          cd build/ios/installer
+          zip -r -y Mingo-IDE-iOS-unsigned.ipa Payload
+          rm -rf Payload
+          zip -r -y Mingo-IDE-iOS-app.zip ../iphoneos/Runner.app
+
+      - name: Upload iOS Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingo-ide-ios-build
+          path: build/ios/installer/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ===================================================================
+  # 6. PUBLISH GITHUB RELEASE
+  # ===================================================================
+  publish-release:
+    name: Publish Official GitHub Release
+    needs: [build-windows, build-linux, build-macos, build-android, build-ios]
+    if: |
+      always() && !cancelled() &&
+      (
+        (github.event_name == 'push') ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
+      ) &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.only_publish_existing == true) ||
+        needs.build-windows.result == 'success' ||
+        needs.build-linux.result == 'success' ||
+        needs.build-macos.result == 'success' ||
+        needs.build-android.result == 'success' ||
+        needs.build-ios.result == 'success'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Results Summary
+        run: |
+          echo "=== Build Results ==="
+          echo "Windows: ${{ needs.build-windows.result }}"
+          echo "Linux:   ${{ needs.build-linux.result }}"
+          echo "macOS:   ${{ needs.build-macos.result }}"
+          echo "Android: ${{ needs.build-android.result }}"
+          echo "iOS:     ${{ needs.build-ios.result }}"
+          echo ""
+          FAILED=""
+          [ "${{ needs.build-windows.result }}" != "success" ] && FAILED="${FAILED} Windows"
+          [ "${{ needs.build-linux.result }}" != "success" ] && FAILED="${FAILED} Linux"
+          [ "${{ needs.build-macos.result }}" != "success" ] && FAILED="${FAILED} macOS"
+          [ "${{ needs.build-android.result }}" != "success" ] && FAILED="${FAILED} Android"
+          [ "${{ needs.build-ios.result }}" != "success" ] && FAILED="${FAILED} iOS"
+          if [ -n "$FAILED" ]; then
+            echo "::warning::The following platforms failed or were skipped:${FAILED}"
+          else
+            echo "All platforms built successfully!"
+          fi
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Determine Release Parameters
+        id: release_params
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.version_tag }}" >> $GITHUB_OUTPUT
+            echo "title=${{ inputs.release_title || inputs.version_tag }}" >> $GITHUB_OUTPUT
+            echo "notes=${{ inputs.release_notes }}" >> $GITHUB_OUTPUT
+            echo "draft=${{ inputs.is_draft }}" >> $GITHUB_OUTPUT
+            echo "prerelease=${{ inputs.is_prerelease }}" >> $GITHUB_OUTPUT
+          else
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+            echo "tag=v1.0.0-build.${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "title=Mingo IDE v1.0.0 (build ${SHORT_SHA})" >> $GITHUB_OUTPUT
+            echo "notes=Automated release from push to main (${GITHUB_SHA})" >> $GITHUB_OUTPUT
+            echo "draft=false" >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare Staging Folders
+        run: mkdir -p raw_artifacts release_assets
+
+      - name: Download Current Workflow Artifacts
+        if: ${{ github.event_name == 'push' || !inputs.only_publish_existing }}
+        uses: actions/download-artifact@v4
+        with:
+          path: raw_artifacts
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Download Existing Run Artifacts
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.only_publish_existing }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CUSTOM_RUN_ID: ${{ inputs.existing_run_id }}
+        run: |
+          if [ -n "$CUSTOM_RUN_ID" ]; then
+            TARGET_RUN="$CUSTOM_RUN_ID"
+          else
+            TARGET_RUN=$(gh run list --workflow="build.yml" --branch=main --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+          fi
+          echo "Downloading artifacts from run $TARGET_RUN..."
+          gh run download "$TARGET_RUN" --dir raw_artifacts
+
+      - name: Organize Release Binaries
+        run: |
+          find raw_artifacts -type f \( \
+            -name "*.exe" -o \
+            -name "*.zip" -o \
+            -name "*.deb" -o \
+            -name "*.tar.gz" -o \
+            -name "*.dmg" -o \
+            -name "*.apk" -o \
+            -name "*.ipa" \
+          \) -exec cp -v {} release_assets/ \;
+
+      - name: Verify Release Assets Exist
+        run: |
+          ASSET_COUNT=$(find release_assets -type f ! -name 'SHA256SUMS.txt' | wc -l)
+          echo "Found $ASSET_COUNT release asset(s)"
+          if [ "$ASSET_COUNT" -eq 0 ]; then
+            echo "::error::No release assets found. Cannot publish an empty release."
+            exit 1
+          fi
+
+      - name: Generate Cryptographic Hashes (SHA-256)
+        run: |
+          cd release_assets
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: List Release Packages
+        run: |
+          echo "=== Release Assets to Publish ==="
+          ls -lh release_assets/
+
+      - name: Publish Official GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_params.outputs.tag }}
+          name: ${{ steps.release_params.outputs.title }}
+          body: ${{ steps.release_params.outputs.notes }}
+          draft: ${{ steps.release_params.outputs.draft }}
+          prerelease: ${{ steps.release_params.outputs.prerelease }}
+          files: release_assets/*
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

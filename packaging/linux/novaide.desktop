@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Mingo IDE
+Comment=Cross-Platform Developer Environment
+Exec=novaide
+Icon=novaide
+Terminal=false
+Type=Application
+Categories=Development;IDE;
+StartupWMClass=novaide

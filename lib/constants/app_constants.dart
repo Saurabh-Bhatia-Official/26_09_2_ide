@@ -10,6 +10,13 @@ class AppConstants {
       'Fast, modern, intelligent cross-platform developer environment.';
   static const String appVersion = '1.0.0';
 
+  // Brand Assets
+  static const String appIconAsset = 'assets/icons/mingo_icon.png';
+  static const String appIconSquircleAsset = 'assets/icons/mingo_icon_squircle.png';
+  static const String appLogoAsset = 'assets/images/mingo_logo.png';
+  static const String appLogoTransparentAsset = 'assets/images/mingo_logo_transparent.png';
+  static const String appLogoDarkAsset = 'assets/images/mingo_logo_dark.png';
+
   // Theming & Typography
   static const String defaultThemeId = 'gray';
   static const String legacyThemeId = 'nova-dark';

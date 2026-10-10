@@ -649,6 +649,50 @@ class SettingsView extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // About Mingo IDE Card
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.bgBase,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.borderSubtle),
+                ),
+                child: Row(
+                  children: [
+                    Image.asset(
+                      AppConstants.appIconAsset,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.code, size: 28),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${AppConstants.appName} v${AppConstants.appVersion}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: theme.textMain,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppConstants.appTagline,
+                            style: TextStyle(fontSize: 10, color: theme.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
             ],
           ),
         ),

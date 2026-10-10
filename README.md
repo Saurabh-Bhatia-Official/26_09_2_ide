@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/images/mingo_logo.png" alt="Mingo IDE Logo" width="220" />
+</p>
+
 # Mingo IDE — Cross-Platform Developer Environment
 
 [![Multi-Platform Build & Release](https://github.com/Saurabh-Bhatia-Official/26_09_2_ide/actions/workflows/build.yml/badge.svg)](https://github.com/Saurabh-Bhatia-Official/26_09_2_ide/actions/workflows/build.yml)
@@ -7,6 +11,8 @@ Mingo IDE is a modern, high-performance, and intelligent cross-platform develope
 ---
 
 ## 🚀 Key Features
+
+> 📖 For an in-depth, comprehensive breakdown of all capabilities, see [features.md](features.md).
 
 - **Activity Bar & Workspace Sidebar**:
   - File Explorer with folder tree, file creation, renaming, and deletion

@@ -48,8 +48,14 @@ class PortPreviewModal extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.public, size: 14, color: Color(0xFF38BDF8)),
-                      const SizedBox(width: 6),
+                      Image.asset(
+                        AppConstants.appIconAsset,
+                        width: 16,
+                        height: 16,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.public, size: 14, color: Color(0xFF38BDF8)),
+                      ),
+                      const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           '${AppConstants.appName} Integrated Web Preview',

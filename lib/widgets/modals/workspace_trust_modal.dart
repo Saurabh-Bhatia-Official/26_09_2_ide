@@ -50,7 +50,13 @@ class _WorkspaceTrustModalState extends State<WorkspaceTrustModal> {
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(Icons.shield_outlined, size: 20, color: Color(0xFFF59E0B)),
+                      child: Image.asset(
+                        AppConstants.appIconAsset,
+                        width: 22,
+                        height: 22,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.shield_outlined, size: 20, color: Color(0xFFF59E0B)),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(

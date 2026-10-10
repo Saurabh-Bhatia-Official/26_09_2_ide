@@ -203,6 +203,8 @@ class _TitleBarState extends State<TitleBar> {
           wp.runTerminalCommand('cargo build');
           if (!wp.isBottomPanelOpen) wp.toggleBottomPanel();
         }
+        if (val == 'about') _showAboutMingoDialog(context, wp.theme);
+        if (val == 'shortcuts') wp.setCommandPaletteOpen(true);
       },
     );
   }
@@ -297,32 +299,55 @@ class _TitleBarState extends State<TitleBar> {
           ],
 
           // Brand Logo
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF38BDF8)],
-              ),
-              boxShadow: [
-                BoxShadow(color: theme.accentGlow, blurRadius: 8),
+          InkWell(
+            onTap: () => _showAboutMingoDialog(context, theme),
+            borderRadius: BorderRadius.circular(5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    boxShadow: [
+                      BoxShadow(color: theme.accentGlow, blurRadius: 8),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Image.asset(
+                    AppConstants.appIconAsset,
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(5),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF38BDF8)],
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        AppConstants.appLogoLetter,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  AppConstants.appName,
+                  style: TextStyle(
+                    color: theme.textMain,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ],
-            ),
-            alignment: Alignment.center,
-            child: const Text(
-              AppConstants.appLogoLetter,
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11),
-            ),
-          ),
-          const SizedBox(width: 7),
-          Text(
-            AppConstants.appName,
-            style: TextStyle(
-              color: theme.textMain,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              letterSpacing: 0.5,
             ),
           ),
 
@@ -381,6 +406,14 @@ class _TitleBarState extends State<TitleBar> {
               ],
               wp,
             ),
+            _buildMenuButton(
+              'Help',
+              [
+                _menuItem('about', 'About ${AppConstants.appName}', '', Icons.info_outline, wp, const Color(0xFF38BDF8)),
+                _menuItem('shortcuts', 'Keyboard Shortcuts', isMac ? '⌘P' : 'Ctrl+P', Icons.keyboard_outlined, wp),
+              ],
+              wp,
+            ),
           ] else if (!widget.isMobile && !isWide) ...[
             const SizedBox(width: 8),
             _buildMenuButton(
@@ -393,6 +426,8 @@ class _TitleBarState extends State<TitleBar> {
                 _menuItem('toggle_sidebar', 'Toggle Primary Sidebar', isMac ? '⌘B' : 'Ctrl+B', Icons.vertical_split, wp),
                 _menuItem('toggle_panel', 'Toggle Panel', 'Ctrl+`', Icons.horizontal_split, wp),
                 _menuItem('toggle_ai', 'Toggle AI Assistant', 'Ctrl+Shift+A', Icons.auto_awesome, wp, const Color(0xFF38BDF8)),
+                const PopupMenuDivider(height: 8),
+                _menuItem('about', 'About ${AppConstants.appName}', '', Icons.info_outline, wp, const Color(0xFF38BDF8)),
               ],
               wp,
             ),
@@ -616,5 +651,106 @@ class _TitleBarState extends State<TitleBar> {
       return titleBarContent;
     },
   );
+  }
+
+  void _showAboutMingoDialog(BuildContext context, dynamic theme) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.border),
+        ),
+        contentPadding: const EdgeInsets.all(24),
+        content: SizedBox(
+          width: 380,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                theme.isDark ? AppConstants.appLogoDarkAsset : AppConstants.appLogoTransparentAsset,
+                width: 180,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Image.asset(
+                  AppConstants.appIconAsset,
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.code, size: 64, color: Color(0xFF38BDF8)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                AppConstants.appName,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.textMain,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Version ${AppConstants.appVersion}',
+                style: TextStyle(fontSize: 12, color: theme.textMuted),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                AppConstants.appTagline,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: theme.textDim),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.bgSurface,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: theme.borderSubtle),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Commit:', style: TextStyle(fontSize: 11, color: theme.textMuted)),
+                        Text('v1.0.0-release', style: TextStyle(fontSize: 11, color: theme.textMain, fontFamily: 'monospace')),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Date:', style: TextStyle(fontSize: 11, color: theme.textMuted)),
+                        Text('2026-10-10', style: TextStyle(fontSize: 11, color: theme.textMain)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Architecture:', style: TextStyle(fontSize: 11, color: theme.textMuted)),
+                        Text('x64 / ARM64 Universal', style: TextStyle(fontSize: 11, color: theme.textMain)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.accent,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(36),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

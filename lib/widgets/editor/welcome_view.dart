@@ -67,24 +67,41 @@ class WelcomeView extends StatelessWidget {
             children: [
               // Brand Icon
               Container(
-                width: 56,
-                height: 56,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF38BDF8)],
-                  ),
+                  borderRadius: BorderRadius.circular(18),
                   boxShadow: [
-                    BoxShadow(color: theme.accentGlow, blurRadius: 30),
+                    BoxShadow(color: const Color(0xFF6366F1).withValues(alpha: 0.35), blurRadius: 36, spreadRadius: 4),
                   ],
                 ),
                 alignment: Alignment.center,
-                child: const Text(
-                  AppConstants.appLogoLetter,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 28,
+                child: Image.asset(
+                  AppConstants.appIconAsset,
+                  width: 72,
+                  height: 72,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF38BDF8)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(color: theme.accentGlow, blurRadius: 30),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      AppConstants.appLogoLetter,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 28,
+                      ),
+                    ),
                   ),
                 ),
               ),
